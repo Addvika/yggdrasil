@@ -27,19 +27,61 @@ export const computeHiddenConnections = onCall(async (request) => {
     // This is a stub for the Cirq logic
     throw new Error('Cirq placeholder error to trigger fallback');
   } catch (error) {
-    // Silently fallback to Vertex AI cosine similarity
+    // Silently fallback to Firestore KNN cosine similarity
     computationPath = 'fallback_vertex';
-    logger.info('Cirq failed or disabled, falling back to Vertex AI cosine similarity');
+    logger.info('Cirq failed or disabled, falling back to Firestore KNN similarity');
     
-    // Stub for Vertex AI cosine similarity logic
-    connections = [
-      {
-        entryIdA: 'stub-entry-1',
-        entryIdB: 'stub-entry-2',
-        score: 0.85,
-        reason: 'Similar themes of growth and transition',
-      }
-    ];
+    const db = admin.firestore();
+    const entriesSnapshot = await db.collectionGroup('entries')
+      .where('userId', '==', userId)
+      .get();
+      
+    const entries = entriesSnapshot.docs
+      .filter(doc => doc.data().embedding)
+      .map(doc => ({
+        id: doc.id,
+        embedding: doc.data().embedding.toVector() // Firebase VectorValue.toVector() returns number[]
+      }));
+
+    const pairs: Array<{ entryIdA: string; entryIdB: string; score: number; reason: string }> = [];
+
+    // For each entry, find its nearest neighbors among the user's own entries
+    for (const entry of entries) {
+      const vectorQuery = db
+        .collectionGroup('entries')
+        .where('userId', '==', userId)
+        .findNearest({
+          vectorField: 'embedding',
+          queryVector: admin.firestore.FieldValue.vector(entry.embedding),
+          limit: 4, // top 3 neighbors + self
+          distanceMeasure: 'COSINE',
+        });
+
+      const snapshot = await vectorQuery.get();
+      // @ts-ignore - vectorQueryResults might not be typed properly depending on admin sdk version, but it's part of the feature
+      const vectorQueryResults = (snapshot as any).vectorQueryResults;
+
+      snapshot.docs.forEach((doc) => {
+        if (doc.id === entry.id) return; // skip self
+        // Firestore returns distance, not similarity — convert: similarity = 1 - distance
+        // Fallback to 1 if not available
+        const distance = vectorQueryResults?.[doc.id]?.distance ?? 0;
+        const score = 1 - distance;
+        
+        // Deduplicate pairs (A,B) and (B,A)
+        const pairKey = [entry.id, doc.id].sort().join('_');
+        if (!pairs.find((p) => [p.entryIdA, p.entryIdB].sort().join('_') === pairKey)) {
+          pairs.push({ 
+            entryIdA: entry.id, 
+            entryIdB: doc.id, 
+            score,
+            reason: 'High semantic similarity'
+          });
+        }
+      });
+    }
+
+    connections = pairs.sort((a, b) => b.score - a.score).slice(0, 20);
   }
 
   try {

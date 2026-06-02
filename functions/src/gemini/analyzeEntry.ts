@@ -27,6 +27,10 @@ export const analyzeEntry = onCall(async (request) => {
       model: process.env.GEMINI_MODEL_DEFAULT || 'gemini-2.0-flash',
       generationConfig: { responseMimeType: "application/json" }
     });
+    
+    const embeddingModel = genAI.getGenerativeModel({
+      model: process.env.GEMINI_MODEL_EMBEDDING || 'gemini-embedding-exp',
+    });
 
     const prompt = `Analyze this journal entry and return ONLY a JSON object with these exact 13 keys:
 - themes (string[])
@@ -46,18 +50,34 @@ export const analyzeEntry = onCall(async (request) => {
 Entry:
 "${content}"`;
 
-    const result = await model.generateContent(prompt);
+    const [result, embeddingResult] = await Promise.all([
+      model.generateContent(prompt),
+      embeddingModel.embedContent(content)
+    ]);
+
     const text = result.response.text();
     const cleanedText = text.replace(/^```json/i, '').replace(/```$/i, '').trim();
     const analysis = JSON.parse(cleanedText);
+    const embeddingValues = embeddingResult.embedding.values;
 
     // Save to Firestore
     const db = admin.firestore();
-    await db.collection(`users/${userId}/entries/${entryId}/analysis`).add({
+    const batch = db.batch();
+    
+    const analysisRef = db.collection(`users/${userId}/entries/${entryId}/analysis`).doc();
+    batch.set(analysisRef, {
       ...analysis,
       entryId,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
+
+    const entryRef = db.doc(`users/${userId}/entries/${entryId}`);
+    batch.update(entryRef, {
+      embedding: admin.firestore.FieldValue.vector(embeddingValues),
+      embeddingGeneratedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    await batch.commit();
 
     // Fire insight_generated event server-side if possible via Admin SDK / measurement protocol 
     // OR we just log and let the client fire it. 

@@ -7,3 +7,4 @@ export { analyzeEntry } from './gemini/analyzeEntry';
 export { computeHiddenConnections } from './insights/hiddenConnections';
 export { yggiChat } from './yggi/chat';
 export { generateWeeklyReport } from './reports/weeklyReport';
+export { backfillEmbeddings } from './admin/backfillEmbeddings';
