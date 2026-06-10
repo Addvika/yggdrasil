@@ -3,6 +3,7 @@
 **Project:** Yggdrasil (semantic journaling app) · Screen Sage Studios
 **Stack:** Next.js (App Router, TS) · Firebase (Auth, Firestore, Storage, Functions, Analytics) · Gemini API (`gemini-embedding-exp` for embeddings) · Firestore KNN vector search · Google Cirq · Cloud Run · Stripe · D3.js
 **Deadline:** August 17, 2026
+### [Linear Tickets](https://linear.app/yggdrasil-journal/join/43e715acf1e134a359b68bcb0dca0b68?s=0)
 
 ---
 
