@@ -33,15 +33,15 @@ export function MoodSliders({ mood, onChange }: MoodSlidersProps) {
   const handleClear = () => onChange(null);
 
   return (
-    <div className="flex flex-col gap-4 w-full p-5 border border-gray-100 rounded-xl bg-gray-50/50">
+    <div className="flex flex-col gap-4 w-full p-5 border border-border/40 rounded-sm bg-surface">
       <div className="flex justify-between items-center">
-        <span className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+        <span className="text-xs font-medium text-sage uppercase tracking-widest">
           How are you feeling? (Optional)
         </span>
         <div className="flex items-center gap-3">
           <span
-            className={`font-medium px-3 py-1 rounded-full text-sm ${
-              isSet ? "bg-white border border-gray-200 text-[#1A3C2E] shadow-sm" : "text-gray-400"
+            className={`font-display italic text-sm px-3.5 py-1 transition-all duration-300 rounded-sm ${
+              isSet ? "bg-muted/40 border border-border/60 text-gold shadow-sm" : "text-foreground/40 font-mono text-xs"
             }`}
           >
             {isSet ? label : "Unset"}
@@ -49,7 +49,7 @@ export function MoodSliders({ mood, onChange }: MoodSlidersProps) {
           {isSet && (
             <button
               onClick={handleClear}
-              className="text-xs text-gray-400 hover:text-gray-600 underline"
+              className="text-xs text-foreground/50 hover:text-foreground underline cursor-pointer transition-colors"
             >
               Clear
             </button>
@@ -57,33 +57,33 @@ export function MoodSliders({ mood, onChange }: MoodSlidersProps) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-6 mt-2">
+      <div className="flex flex-col gap-4 mt-2">
         {/* Polarity Slider */}
         <div className="flex items-center gap-4">
-          <span className="text-xs font-medium text-gray-400 w-16 text-right">Negative</span>
+          <span className="text-[11px] font-medium text-foreground/50 w-20 text-right uppercase tracking-wider select-none">Negative</span>
           <input
             type="range"
             min="0"
             max="10"
             value={polarity}
             onChange={handlePolarityChange}
-            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#1A3C2E]"
+            className="flex-1 h-1 bg-muted rounded-sm appearance-none cursor-pointer accent-sage"
           />
-          <span className="text-xs font-medium text-gray-400 w-16 text-left">Positive</span>
+          <span className="text-[11px] font-medium text-foreground/50 w-20 text-left uppercase tracking-wider select-none">Positive</span>
         </div>
 
         {/* Intensity Slider */}
         <div className="flex items-center gap-4">
-          <span className="text-xs font-medium text-gray-400 w-16 text-right">Low Energy</span>
+          <span className="text-[11px] font-medium text-foreground/50 w-20 text-right uppercase tracking-wider select-none">Low Energy</span>
           <input
             type="range"
             min="0"
             max="10"
             value={intensity}
             onChange={handleIntensityChange}
-            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#1A3C2E]"
+            className="flex-1 h-1 bg-muted rounded-sm appearance-none cursor-pointer accent-sage"
           />
-          <span className="text-xs font-medium text-gray-400 w-16 text-left">High Energy</span>
+          <span className="text-[11px] font-medium text-foreground/50 w-20 text-left uppercase tracking-wider select-none">High Energy</span>
         </div>
       </div>
     </div>

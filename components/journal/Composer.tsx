@@ -36,37 +36,37 @@ export function Composer() {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto flex flex-col h-full min-h-[60vh] bg-background text-foreground border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+    <div className="w-full max-w-4xl mx-auto flex flex-col h-full min-h-[60vh] bg-surface-2 text-foreground border border-border/60 rounded-sm shadow-md overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center gap-1 p-2 border-b border-gray-200 bg-gray-50">
+      <div className="flex items-center gap-1.5 p-3 border-b border-border/40 bg-surface">
         <button
           onClick={() => handleCommand("bold")}
-          className="px-3 py-1.5 rounded hover:bg-gray-200 font-bold text-sm transition-colors text-gray-700"
+          className="px-3 py-1.5 rounded-sm hover:bg-muted/30 font-bold text-sm transition-colors text-foreground/85 hover:text-foreground cursor-pointer"
           title="Bold (Cmd+B)"
         >
           B
         </button>
         <button
           onClick={() => handleCommand("italic")}
-          className="px-3 py-1.5 rounded hover:bg-gray-200 italic text-sm transition-colors text-gray-700"
+          className="px-3 py-1.5 rounded-sm hover:bg-muted/30 italic text-sm transition-colors text-foreground/85 hover:text-foreground cursor-pointer"
           title="Italic (Cmd+I)"
         >
           I
         </button>
         <button
           onClick={() => handleCommand("insertUnorderedList")}
-          className="px-3 py-1.5 rounded hover:bg-gray-200 text-sm transition-colors text-gray-700 flex items-center gap-1"
+          className="px-3 py-1.5 rounded-sm hover:bg-muted/30 text-sm transition-colors text-foreground/85 hover:text-foreground flex items-center gap-1.5 cursor-pointer"
           title="Bulleted List"
         >
-          <span className="text-lg leading-none">•</span> List
+          <span className="text-lg leading-none text-sage">•</span> List
         </button>
       </div>
 
       {/* Editor Area */}
       <div
         ref={editorRef}
-        className="flex-1 p-8 outline-none overflow-y-auto text-lg leading-relaxed
-                   empty:before:content-[attr(data-placeholder)] empty:before:text-gray-400 empty:before:pointer-events-none empty:before:block"
+        className="flex-1 p-8 outline-none overflow-y-auto text-body-lg leading-relaxed text-foreground bg-transparent
+                   empty:before:content-[attr(data-placeholder)] empty:before:text-foreground/30 empty:before:pointer-events-none empty:before:block"
         contentEditable
         onInput={handleInput}
         data-placeholder="Write your entry here..."
@@ -79,11 +79,13 @@ export function Composer() {
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200 flex justify-end bg-gray-50">
+      <div className="p-4 border-t border-border/40 flex justify-end bg-surface">
         <button
           onClick={handleSave}
-          className="px-6 py-2 bg-[#1A3C2E] text-white rounded-lg hover:opacity-90 transition-opacity font-medium shadow-sm"
+          className="px-6 py-2.5 bg-primary text-foreground border border-gold/40 rounded-sm hover:bg-primary/90 transition-all duration-300 font-medium text-xs tracking-wider uppercase relative pl-8 cursor-pointer overflow-hidden group"
         >
+          {/* Subtle gold left-edge line on hover */}
+          <span className="absolute left-0 top-1 bottom-1 w-[2.5px] bg-gold scale-y-0 group-hover:scale-y-100 transition-transform duration-300 origin-center" />
           Save Entry
         </button>
       </div>
