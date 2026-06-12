@@ -26,26 +26,45 @@ export interface JournalEntry {
   embeddingGeneratedAt?: any; // FirebaseFirestore.Timestamp
 }
 
+export interface AnalysisEntity {
+  type: 'person' | 'place' | 'event' | 'concept';
+  name: string;
+}
+
+export interface AnalysisEmotion {
+  label: string;
+  polarity: number; // 0–10; 5 = neutral; lower = negative, higher = positive
+  intensity: number; // 0–10; 5 = moderate; lower = mild, higher = intense
+}
+
+export interface SafetyConcerns {
+  flagged: boolean;
+  concerns: string[]; // empty when flagged is false
+}
+
 export interface Interpretation {
   main_insight: string;
-  questions: string[];
+  questions: string[]; // 3–5 items
   action_items: string[];
   patterns_identified: string[];
   growth_connection: string;
-  frameworks_applied?: string[];
-  depth_analysis?: string;
+  frameworks_applied?: string[]; // populated only when depthScore >= 3
+  depth_analysis?: string; // populated only when depthScore >= 3
 }
 
 export interface EntryAnalysis {
   id?: string;
   entryId?: string;
-  entities: string[];
-  themes: string[];
-  emotions: string[];
+  depthScore: number; // 1–11; phase 1 output; drives phase 2 depth
+  // --- 13 analysis fields ---
+  entities: AnalysisEntity[];
+  themes: string[]; // up to 5
+  emotions: AnalysisEmotion[];
   keywords: string[];
-  summary: string;
-  safety_concerns: string;
+  summary: string; // 2–3 sentences
+  safety_concerns: SafetyConcerns;
   interpretation: Interpretation;
+  // --- optional fields gated by user Settings ---
   chakra_tags?: string[];
   tarot_tags?: string[];
   sacred_geometry?: string[];
