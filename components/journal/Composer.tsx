@@ -55,7 +55,7 @@ export function Composer() {
       const wordCount = textContent.trim().split(/\s+/).filter(Boolean).length;
       
       logEntryCreated({
-        entry_type: (entryType as any) || undefined,
+        entry_type: entryType ?? undefined,
         has_mood: !!mood,
         tag_count: 0,
         word_count: wordCount
