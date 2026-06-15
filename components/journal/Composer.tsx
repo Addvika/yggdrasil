@@ -5,7 +5,7 @@ import { EntryTypeSelector, type EntryType } from "./EntryTypeSelector";
 import { MoodSliders, type MoodState } from "./MoodSliders";
 import { createEntry } from "@/lib/entries";
 import { auth } from "@/lib/firebase/client";
-import { logEntryCreated } from "@/lib/analytics";
+import { logEntryCreated } from "@/lib/analytics/client";
 
 export function Composer() {
   const editorRef = useRef<HTMLDivElement>(null);

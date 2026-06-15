@@ -1,7 +1,7 @@
 import { logEvent as firebaseLogEvent } from 'firebase/analytics';
 import type { CustomParams } from 'firebase/analytics';
 import { analyticsReady } from '@/lib/firebase/client';
-import { EntryType } from '@/types/journal';
+import { EntryType, Mood } from '@/types/journal';
 import type { EntryType as ComposerEntryType } from '@/components/journal/EntryTypeSelector';
 
 const isAnalyticsDebug = process.env.NEXT_PUBLIC_ANALYTICS_DEBUG === 'true';
