@@ -27,6 +27,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       await signInWithGoogle();
       router.replace('/journal');
     } catch (err: unknown) {
+      console.error('[AuthForm] Google auth error:', err);
       setErrorMsg(getFriendlyAuthErrorMessage(err));
     } finally {
       setLoading(false);
@@ -48,6 +49,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       }
       router.replace('/journal');
     } catch (err: unknown) {
+      console.error('[AuthForm] Email auth error:', err);
       setErrorMsg(getFriendlyAuthErrorMessage(err));
     } finally {
       setLoading(false);

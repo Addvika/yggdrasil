@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       },
       (listenerError) => {
+        console.error('[AuthContext] onAuthStateChanged error:', listenerError);
         setError(getFriendlyAuthErrorMessage(listenerError));
         setLoading(false);
       }
