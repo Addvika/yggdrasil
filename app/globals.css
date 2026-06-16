@@ -1,19 +1,116 @@
 @import "tailwindcss";
 
 @theme {
+  /* Brand Earthy Colors */
+  --color-background: #0F1A14;
+  --color-foreground: #E8E0D0;
+  
   --color-primary: #1A3C2E;
-  --color-background: #FAFAFA;
-  --color-foreground: #111111;
+  --color-primary-foreground: #E8E0D0;
+  
+  --color-surface: #162318;
+  --color-surface-2: #1E2E22;
+  
+  --color-muted: #2A4035;
+  --color-muted-foreground: #7BAE8A;
+  
+  --color-gold: #C9A84C;
+  --color-sage: #7BAE8A;
+  --color-earth: #8B6B4A;
+  
+  --color-destructive: #8B3A3A;
+  --color-destructive-foreground: #E8E0D0;
+  
+  --color-border: #2A4035;
+  --color-input: transparent;
+  --color-ring: #7BAE8A;
+
+  /* Typography Fonts */
+  --font-sans: var(--font-sans), sans-serif;
+  --font-display: var(--font-display), serif;
+  --font-mono: var(--font-mono), monospace;
+
+  /* Typography Scale */
+  --text-hero: 3.5rem; /* 56px */
+  --text-section: 2.25rem; /* 36px */
+  --text-card: 1.5rem; /* 24px */
+  --text-quote: 1.25rem; /* 20px */
+  --text-body-lg: 1rem; /* 16px */
+  --text-body-md: 0.875rem; /* 14px */
+  --text-body-sm: 0.8125rem; /* 13px */
+  --text-label: 0.6875rem; /* 11px */
+  --text-mono-data: 0.75rem; /* 12px */
+
+  /* Font Weights */
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+
+  /* Border Radius */
+  --radius-custom: 0.25rem; /* 4px */
 }
 
 @layer base {
   :root {
-    --background: var(--color-background);
-    --foreground: var(--color-foreground);
+    --font-size: 16px;
+    --background: #0F1A14;
+    --foreground: #E8E0D0;
+    
+    --primary: #1A3C2E;
+    --primary-foreground: #E8E0D0;
+    
+    --surface: #162318;
+    --surface-2: #1E2E22;
+    
+    --muted: #2A4035;
+    --muted-foreground: #7BAE8A;
+    
+    --gold: #C9A84C;
+    --sage: #7BAE8A;
+    --earth: #8B6B4A;
+    
+    --destructive: #8B3A3A;
+    --destructive-foreground: #E8E0D0;
+    
+    --border: #2A4035;
+    --input: transparent;
+    --ring: #7BAE8A;
+    
+    --font-weight-medium: 500;
+    --font-weight-normal: 400;
+    --radius: 0.25rem;
+
+    /* Type Scale CSS Variables */
+    --text-hero: 3.5rem;
+    --text-section: 2.25rem;
+    --text-card: 1.5rem;
+    --text-quote: 1.25rem;
+    --text-body-lg: 1rem;
+    --text-body-md: 0.875rem;
+    --text-body-sm: 0.8125rem;
+    --text-label: 0.6875rem;
+    --text-mono-data: 0.75rem;
   }
+
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: var(--font-sans);
+    font-size: var(--font-size);
+  }
+
+  /* Custom scrollbar for modern premium aesthetics */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--muted);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--border);
   }
 }

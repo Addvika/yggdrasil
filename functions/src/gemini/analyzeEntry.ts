@@ -1,94 +1,134 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { logInsightGenerated } from '../lib/analytics';
+import { generateText, generateEmbedding, geminiapikey } from '../lib/gemini';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const ALL_FRAMEWORKS = [
+  'Theravada Buddhist', 'Freudian', 'Jungian', 'Hermetic',
+  'Advaita Vedanta', 'Taoist', 'Attachment Theory', 'IFS',
+  'CBT', 'DBT', 'Stoic', 'Gnostic',
+];
 
-export const analyzeEntry = onCall(async (request) => {
-  const { auth, data } = request;
-  
-  if (!auth) {
-    throw new HttpsError('unauthenticated', 'User must be authenticated.');
-  }
+export const analyzeEntry = onDocumentCreated(
+  {
+    document: 'users/{userId}/entries/{entryId}',
+    secrets: [geminiapikey],
+  },
+  async (event) => {
+    const { userId, entryId } = event.params;
+    const entryData = event.data?.data();
 
-  const { entryId, content, userId } = data;
+    if (!entryData?.content) {
+      logger.warn('analyzeEntry: entry has no content', { userId, entryId });
+      return;
+    }
 
-  if (!entryId || !content || !userId) {
-    throw new HttpsError('invalid-argument', 'Missing required fields.');
-  }
+    const db = admin.firestore();
+    const entryRef = db.doc(`users/${userId}/entries/${entryId}`);
 
-  if (userId !== auth.uid) {
-    throw new HttpsError('permission-denied', 'Cannot analyze entry for another user.');
-  }
+    // Prevent redundant work by checking if it's already analyzed
+    if (entryData.analysisStatus !== 'pending') {
+      logger.info(`Entry ${entryId} analysisStatus is ${entryData.analysisStatus}, skipping.`);
+      return;
+    }
 
-  try {
-    const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL_DEFAULT || 'gemini-2.0-flash',
-      generationConfig: { responseMimeType: "application/json" }
-    });
-    
-    const embeddingModel = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL_EMBEDDING || 'gemini-embedding-exp',
-    });
+    try {
+      // --- Phase 1: depth scoring ---
+      const depthPrompt = `Rate the psychological and emotional richness of this journal entry on a scale of 1 to 11. Return ONLY a JSON object with a single key "depthScore" containing an integer.
 
-    const prompt = `Analyze this journal entry and return ONLY a JSON object with these exact 13 keys:
-- themes (string[])
-- emotions (string[])
-- peopleMentioned (string[])
-- sentimentScore (number between -1 and 1)
-- archetypes (string[])
-- attachmentPatterns (string[])
-- shadowElements (string[])
-- growthEdges (string[])
-- goalSuggestions (string[])
-- keywords (string[])
-- summary (string)
-- spiritualInsights (string[])
-- hiddenPatterns (string[])
+Score guide:
+1–2: Very brief or surface-level (a one-liner, a grocery list accidentally saved)
+3–5: Normal reflective entry — feelings mentioned, but not deeply explored
+6–8: Substantive introspection — named emotions, personal patterns, self-questioning
+9–11: Deep or crisis-level — strong emotional weight, shadow material, major life themes
 
 Entry:
-"${content}"`;
+"${entryData.content}"`;
 
-    const [result, embeddingResult] = await Promise.all([
-      model.generateContent(prompt),
-      embeddingModel.embedContent(content)
-    ]);
+      const depthResponse = await generateText(depthPrompt, {
+        responseMimeType: 'application/json',
+      });
+      const depthText = depthResponse
+        .replace(/^```json\n?/i, '')
+        .replace(/```$/i, '')
+        .trim();
+      const { depthScore } = JSON.parse(depthText) as { depthScore: number };
 
-    const text = result.response.text();
-    const cleanedText = text.replace(/^```json/i, '').replace(/```$/i, '').trim();
-    const analysis = JSON.parse(cleanedText);
-    const embeddingValues = embeddingResult.embedding.values;
+      // --- Phase 2: comprehensive analysis ---
+      let enabledFrameworks: string[] = [];
+      if (depthScore >= 3) {
+        try {
+          const settingsSnap = await db.doc(`users/${userId}/settings/preferences`).get();
+          const saved: string[] = settingsSnap.data()?.enabledFrameworks ?? [];
+          enabledFrameworks = saved.length > 0 ? saved : ALL_FRAMEWORKS;
+        } catch {
+          enabledFrameworks = ALL_FRAMEWORKS;
+        }
+      }
 
-    // Save to Firestore
-    const db = admin.firestore();
-    const batch = db.batch();
-    
-    const analysisRef = db.collection(`users/${userId}/entries/${entryId}/analysis`).doc();
-    batch.set(analysisRef, {
-      ...analysis,
-      entryId,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+      const depthFieldsSpec = depthScore >= 3
+        ? `,
+    "frameworks_applied": string[] — which of these frameworks were relevant: [${enabledFrameworks.join(', ')}],
+    "depth_analysis": string — a short paragraph on deeper psychological/spiritual themes, shadow elements, or archetypal dynamics`
+        : '';
 
-    const entryRef = db.doc(`users/${userId}/entries/${entryId}`);
-    batch.update(entryRef, {
-      embedding: admin.firestore.FieldValue.vector(embeddingValues),
-      embeddingGeneratedAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+      const analysisPrompt = `Analyze this journal entry and return ONLY a JSON object. No prose, no markdown fences — raw JSON only.
 
-    await batch.commit();
+Required fields:
+- "entities": [{ "type": "person"|"place"|"event"|"concept", "name": string }, ...]
+- "themes": string[] — up to 5 overarching topic phrases
+- "emotions": [{ "label": string, "polarity": number (0–10; 5=neutral; lower=more negative, higher=more positive), "intensity": number (0–10; 5=moderate) }, ...]
+- "keywords": string[] — significant single words or short phrases for search and tagging
+- "summary": string — 2–3 sentence neutral third-person summary of what the entry is about; no interpretation
+- "safety_concerns": { "flagged": boolean, "concerns": string[] }
+- "interpretation": {
+    "main_insight": string — core psychological/spiritual insight in 1–2 sentences; warm, reflective tone,
+    "questions": string[] — 3 to 5 reflective open-ended questions for the writer,
+    "action_items": string[] — gentle concrete suggestions phrased as invitations,
+    "patterns_identified": string[] — named cognitive distortions or behavioural/emotional patterns,
+    "growth_connection": string — 1–2 sentences linking this entry to the writer's broader self-development arc${depthFieldsSpec}
+  }${depthScore < 3 ? '\n\nDepthScore is below 3 — do NOT include frameworks_applied or depth_analysis.' : ''}
 
-    // Fire insight_generated event server-side if possible via Admin SDK / measurement protocol 
-    // OR we just log and let the client fire it. 
-    // The prompt says "Fires the insight_generated analytics event (server-side via Admin SDK)"
-    // Note: Firebase Admin SDK doesn't natively fire Analytics events. It requires Measurement Protocol.
-    // For now we will just log it.
-    logger.info('insight_generated fired', { userId, entryId });
+Entry (depthScore: ${depthScore}):
+"${entryData.content}"`;
 
-    return { success: true, analysis };
-  } catch (error: any) {
-    logger.error('Failed to analyze entry', error);
-    throw new HttpsError('internal', 'Analysis failed.');
+      const [analysisResponse, embeddingValues] = await Promise.all([
+        generateText(analysisPrompt, {
+          responseMimeType: 'application/json',
+        }),
+        generateEmbedding(entryData.content),
+      ]);
+
+      const analysisText = analysisResponse
+        .replace(/^```json\n?/i, '')
+        .replace(/```$/i, '')
+        .trim();
+      const analysisFields = JSON.parse(analysisText);
+
+      const batch = db.batch();
+
+      const analysisRef = db.collection(`users/${userId}/entries/${entryId}/analysis`).doc();
+      batch.set(analysisRef, {
+        entryId,
+        depthScore,
+        ...analysisFields,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      batch.update(entryRef, {
+        analysisStatus: 'complete',
+        embedding: admin.firestore.FieldValue.vector(embeddingValues),
+        embeddingGeneratedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      await batch.commit();
+
+      logger.info('insight_generated', { userId, entryId, depthScore });
+      await logInsightGenerated(userId, entryId, depthScore);
+    } catch (error) {
+      logger.error('analyzeEntry failed', { userId, entryId, error });
+      await entryRef.update({ analysisStatus: 'error' }).catch(() => {});
+    }
   }
-});
+);

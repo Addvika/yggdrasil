@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
+import { logHiddenConnectionsComputed } from '../lib/analytics';
 // import { VertexAI } from '@google-cloud/vertexai'; // Used in fallback
 
 export const computeHiddenConnections = onCall(async (request) => {
@@ -58,7 +59,6 @@ export const computeHiddenConnections = onCall(async (request) => {
         });
 
       const snapshot = await vectorQuery.get();
-      // @ts-ignore - vectorQueryResults might not be typed properly depending on admin sdk version, but it's part of the feature
       const vectorQueryResults = (snapshot as any).vectorQueryResults;
 
       snapshot.docs.forEach((doc) => {
@@ -99,6 +99,8 @@ export const computeHiddenConnections = onCall(async (request) => {
     }
 
     await batch.commit();
+
+    await logHiddenConnectionsComputed(userId, computationPath, connections.length);
 
     logger.info('hidden_connections_computation fired', { userId, path: computationPath });
 
