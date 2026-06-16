@@ -3,6 +3,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { SettingsTracker } from './_tracker';
 
 export default function SettingsPage() {
   const { signOut } = useAuth();
@@ -23,6 +24,7 @@ export default function SettingsPage() {
 
   return (
     <div>
+      <SettingsTracker />
       <h1 className="text-2xl font-bold mb-4">Settings</h1>
       <button
         type="button"

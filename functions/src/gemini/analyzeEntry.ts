@@ -1,6 +1,7 @@
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
+import { logInsightGenerated } from '../lib/analytics';
 import { generateText, generateEmbedding, geminiapikey } from '../lib/gemini';
 
 const ALL_FRAMEWORKS = [
@@ -124,6 +125,7 @@ Entry (depthScore: ${depthScore}):
       await batch.commit();
 
       logger.info('insight_generated', { userId, entryId, depthScore });
+      await logInsightGenerated(userId, entryId, depthScore);
     } catch (error) {
       logger.error('analyzeEntry failed', { userId, entryId, error });
       await entryRef.update({ analysisStatus: 'error' }).catch(() => {});
