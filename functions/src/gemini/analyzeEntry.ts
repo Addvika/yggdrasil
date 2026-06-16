@@ -1,8 +1,8 @@
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
-import { generateText, generateEmbedding } from '../lib/gemini';
 import { logInsightGenerated } from '../lib/analytics';
+import { generateText, generateEmbedding, geminiapikey } from '../lib/gemini';
 
 const ALL_FRAMEWORKS = [
   'Theravada Buddhist', 'Freudian', 'Jungian', 'Hermetic',
@@ -11,7 +11,10 @@ const ALL_FRAMEWORKS = [
 ];
 
 export const analyzeEntry = onDocumentCreated(
-  'users/{userId}/entries/{entryId}',
+  {
+    document: 'users/{userId}/entries/{entryId}',
+    secrets: [geminiapikey],
+  },
   async (event) => {
     const { userId, entryId } = event.params;
     const entryData = event.data?.data();
