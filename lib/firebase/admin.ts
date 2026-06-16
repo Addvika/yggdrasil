@@ -1,12 +1,12 @@
 import * as admin from 'firebase-admin';
 
 if (!admin.apps.length) {
-  if (process.env.FIREBASE_ADMIN_PROJECT_ID) {
+  if (process.env.FIREBASE_ADMIN_PROJECT_ID && process.env.FIREBASE_ADMIN_PRIVATE_KEY) {
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
         clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, '\n'),
       }),
     });
   } else {
@@ -14,7 +14,7 @@ if (!admin.apps.length) {
   }
 }
 
-const isBuildTime = !process.env.FIREBASE_ADMIN_PROJECT_ID;
+const isBuildTime = !process.env.FIREBASE_ADMIN_PROJECT_ID || !process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 
 const adminDb = isBuildTime ? ({} as admin.firestore.Firestore) : admin.firestore();
 const adminAuth = isBuildTime ? ({} as admin.auth.Auth) : admin.auth();
