@@ -2,6 +2,7 @@ import { InsightsTracker } from './_tracker';
 import { StreakCalendar } from '@/components/insights/StreakCalendar';
 import { MoodCharts } from '@/components/insights/MoodCharts';
 import { EmotionalPatterns } from '@/components/insights/EmotionalPatterns';
+import { ClusterMap } from '@/components/insights/ClusterMap';
 
 export default function InsightsPage() {
   return (
@@ -25,6 +26,10 @@ export default function InsightsPage() {
 
       <div className="mb-12">
         <EmotionalPatterns />
+      </div>
+
+      <div className="mb-12">
+        <ClusterMap />
       </div>
 
     </div>
