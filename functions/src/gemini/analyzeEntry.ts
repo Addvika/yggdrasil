@@ -30,7 +30,10 @@ export const analyzeEntry = onDocumentWritten(
     }
 
     try {
+      logger.info(`[analyzeEntry] Starting analysis for entry: ${entryId} (User: ${userId})`);
+
       // --- Phase 1: depth scoring ---
+      logger.info(`[analyzeEntry] Phase 1: Generating depth score...`);
       const depthPrompt = `Rate the psychological and emotional richness of this journal entry on a scale of 1 to 11. Return ONLY a JSON object with a single key "depthScore" containing an integer.
 
 Score guide:
@@ -50,14 +53,18 @@ Entry:
         .replace(/```$/i, '')
         .trim();
       const { depthScore } = JSON.parse(depthText) as { depthScore: number };
+      logger.info(`[analyzeEntry] Phase 1 Complete. Depth score: ${depthScore}`);
 
       // --- Phase 2: comprehensive analysis ---
+      logger.info(`[analyzeEntry] Phase 2: Fetching user frameworks...`);
       let enabledFrameworks: string[] = [];
       if (depthScore >= 3) {
         try {
           const settingsSnap = await db.doc(`users/${userId}/settings/preferences`).get();
           enabledFrameworks = settingsSnap.data()?.enabledFrameworks ?? [];
-        } catch {
+          logger.info(`[analyzeEntry] Enabled frameworks: ${enabledFrameworks.join(', ') || 'None'}`);
+        } catch (error) {
+          logger.warn(`[analyzeEntry] Failed to fetch frameworks:`, error);
           enabledFrameworks = [];
         }
       }
@@ -89,12 +96,13 @@ Required fields:
 Entry (depthScore: ${depthScore}):
 "${entryData.content}"`;
 
+      logger.info(`[analyzeEntry] Phase 2: Generating comprehensive analysis and embedding concurrently...`);
       const analysisPromise = generateText(analysisPrompt, {
         responseMimeType: 'application/json',
       });
       
       const embeddingPromise = generateEmbedding(entryData.content).catch((e) => {
-        logger.error('Failed to generate embedding', { userId, entryId, error: e });
+        logger.error('[analyzeEntry] Failed to generate embedding', { userId, entryId, error: e });
         return null;
       });
 
@@ -102,11 +110,14 @@ Entry (depthScore: ${depthScore}):
         analysisPromise,
         embeddingPromise,
       ]);
+      logger.info(`[analyzeEntry] Phase 2 Complete. Both Gemini calls returned successfully.`);
 
+      logger.info(`[analyzeEntry] Parsing Gemini JSON response...`);
       const match = analysisResponse.match(/\{[\s\S]*\}/);
       const analysisText = match ? match[0] : analysisResponse;
       const analysisFields = JSON.parse(analysisText);
 
+      logger.info(`[analyzeEntry] Saving analysis to Firestore...`);
       const batch = db.batch();
 
       const analysisRef = db.collection(`users/${userId}/entries/${entryId}/analysis`).doc();
@@ -132,6 +143,7 @@ Entry (depthScore: ${depthScore}):
       batch.update(entryRef, entryUpdateData);
 
       await batch.commit();
+      logger.info(`[analyzeEntry] Analysis successfully saved to Firestore.`);
 
       logger.info('insight_generated', { userId, entryId, depthScore });
       await logInsightGenerated(userId, entryId, depthScore);
@@ -145,6 +157,7 @@ Entry (depthScore: ${depthScore}):
         status: 'success',
         depthScore
       });
+      logger.info(`[analyzeEntry] Logged to opsLogs collection.`);
 
     } catch (error) {
       logger.error('analyzeEntry failed', { userId, entryId, error });
