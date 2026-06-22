@@ -66,14 +66,14 @@ export function kMeans<T>(
   const actualK = Math.min(k, normalizedItems.length);
 
   // 2. Initialize centroids randomly from the dataset
-  let centroids: number[][] = [];
+  const centroids: number[][] = [];
   const initialIndices = new Set<number>();
   while (initialIndices.size < actualK) {
     initialIndices.add(Math.floor(Math.random() * normalizedItems.length));
   }
   initialIndices.forEach(idx => centroids.push([...normalizedItems[idx].vec]));
 
-  let assignments: number[] = new Array(normalizedItems.length).fill(-1);
+  const assignments: number[] = new Array(normalizedItems.length).fill(-1);
   let hasChanged = true;
   let iterations = 0;
 

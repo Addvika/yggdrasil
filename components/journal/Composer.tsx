@@ -18,7 +18,23 @@ export interface ComposerProps {
 export function Composer({ initialEntry, onSave }: ComposerProps = {}) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [content, setContent] = useState(initialEntry?.content || "");
-  const [entryType, setEntryType] = useState<EntryType>(initialEntry?.entryType || null);
+  const [entryType, setEntryType] = useState<EntryType>(() => {
+    const entryTypeMap: Record<string, NonNullable<EntryType>> = {
+      REFLECTION: "Reflection",
+      GRATITUDE: "Gratitude",
+      DREAM: "Dream",
+      EVENT: "Event",
+      Reflection: "Reflection",
+      Gratitude: "Gratitude",
+      Dream: "Dream",
+      Event: "Event",
+      Other: "Other",
+    };
+
+    return initialEntry?.entryType
+      ? entryTypeMap[String(initialEntry.entryType)] ?? null
+      : null;
+  });
   const [mood, setMood] = useState<MoodState | null>(
     initialEntry?.moodLabel 
       ? { label: initialEntry.moodLabel, polarity: initialEntry.moodPolarity || 5, intensity: initialEntry.moodIntensity || 5 }

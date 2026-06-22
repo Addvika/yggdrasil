@@ -61,7 +61,7 @@ export function KnowledgeGraph() {
 
     const width = containerRef.current.clientWidth;
     const height = 500;
-    const svg = d3.select(containerRef.current).select('svg');
+    const svg = d3.select(containerRef.current).select<SVGSVGElement>('svg');
     svg.selectAll('*').remove();
 
     // Setup zoom container
@@ -101,7 +101,7 @@ export function KnowledgeGraph() {
 
     // Draw nodes
     const node = g.append('g')
-      .selectAll('circle')
+      .selectAll<SVGCircleElement, GraphNode & d3.SimulationNodeDatum>('circle')
       .data(nodes)
       .join('circle')
       .attr('r', d => Math.max(8, Math.min(25, d.weight * 3 + 5)))
@@ -109,7 +109,7 @@ export function KnowledgeGraph() {
       .attr('stroke', '#fff')
       .attr('stroke-width', 2)
       .attr('class', 'cursor-pointer transition-all hover:stroke-foreground/50')
-      .call(d3.drag<SVGCircleElement, any>()
+      .call(d3.drag<SVGCircleElement, GraphNode & d3.SimulationNodeDatum>()
         .on('start', (event, d) => {
           if (!event.active) simulation.alphaTarget(0.3).restart();
           d.fx = d.x;
