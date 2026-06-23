@@ -58,6 +58,7 @@ export function VoiceRecorder({ onTranscriptReady, onCancel }: VoiceRecorderProp
   const chunksRef = useRef<Blob[]>([]);
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const restartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // State
   const [state, setState] = useState<RecordingState>("idle");
@@ -115,6 +116,10 @@ export function VoiceRecorder({ onTranscriptReady, onCancel }: VoiceRecorderProp
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+    }
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
     }
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch { /* ignore */ }
@@ -264,7 +269,33 @@ export function VoiceRecorder({ onTranscriptReady, onCancel }: VoiceRecorderProp
         };
 
         recognition.onend = () => {
-          // Restart if still recording (Web Speech auto-stops periodically)
+          if (restartTimeoutRef.current) {
+            clearTimeout(restartTimeoutRef.current);
+          }
+          // Restart if still recording, but with a 600ms delay to allow iOS to recycle the audio channel
+          restartTimeoutRef.current = setTimeout(() => {
+            if (
+              mediaRecorderRef.current &&
+              mediaRecorderRef.current.state === "recording" &&
+              recognitionRef.current
+            ) {
+              try {
+                recognitionRef.current.start();
+              } catch (err) {
+                console.warn("Failed to restart SpeechRecognition:", err);
+              }
+            }
+          }, 600);
+        };
+
+        recognitionRef.current = recognition;
+
+        // On iOS, starting SpeechRecognition at the exact same millisecond as MediaRecorder
+        // causes a hardware lock. Delaying startup by 300ms resolves this race condition.
+        if (restartTimeoutRef.current) {
+          clearTimeout(restartTimeoutRef.current);
+        }
+        restartTimeoutRef.current = setTimeout(() => {
           if (
             mediaRecorderRef.current &&
             mediaRecorderRef.current.state === "recording" &&
@@ -272,14 +303,11 @@ export function VoiceRecorder({ onTranscriptReady, onCancel }: VoiceRecorderProp
           ) {
             try {
               recognitionRef.current.start();
-            } catch {
-              /* ignore duplicate start */
+            } catch (err) {
+              console.warn("Initial SpeechRecognition start failed:", err);
             }
           }
-        };
-
-        recognition.start();
-        recognitionRef.current = recognition;
+        }, 400);
       }
     } catch (error: any) {
       console.error("Microphone access error:", error);
@@ -302,6 +330,10 @@ export function VoiceRecorder({ onTranscriptReady, onCancel }: VoiceRecorderProp
   const handlePause = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.pause();
+      if (restartTimeoutRef.current) {
+        clearTimeout(restartTimeoutRef.current);
+        restartTimeoutRef.current = null;
+      }
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch { /* ignore */ }
       }
@@ -320,9 +352,24 @@ export function VoiceRecorder({ onTranscriptReady, onCancel }: VoiceRecorderProp
   const handleResume = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "paused") {
       mediaRecorderRef.current.resume();
-      if (recognitionRef.current) {
-        try { recognitionRef.current.start(); } catch { /* ignore */ }
+      
+      if (restartTimeoutRef.current) {
+        clearTimeout(restartTimeoutRef.current);
       }
+      restartTimeoutRef.current = setTimeout(() => {
+        if (
+          mediaRecorderRef.current &&
+          mediaRecorderRef.current.state === "recording" &&
+          recognitionRef.current
+        ) {
+          try {
+            recognitionRef.current.start();
+          } catch (err) {
+            console.warn("SpeechRecognition start failed on resume:", err);
+          }
+        }
+      }, 400);
+
       timerRef.current = setInterval(() => {
         setElapsed((prev) => prev + 1);
       }, 1000);
