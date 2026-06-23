@@ -183,7 +183,7 @@ export function MoodCharts() {
         <div className="bg-card border border-border/50 rounded-xl p-6 shadow-sm flex flex-col justify-center items-center">
           <h4 className="text-sm font-medium text-muted-foreground w-full mb-2 uppercase tracking-wider">Mood Matrix</h4>
           <p className="text-xs text-muted-foreground w-full mb-6 text-left">
-            Plots your entries based on emotional polarity (negative to positive) and intensity. It helps you quickly identify if you're experiencing extreme highs/lows or if your mood is generally stable.
+            Plots your entries based on emotional polarity (negative to positive) and intensity. It helps you quickly identify if you&apos;re experiencing extreme highs/lows or if your mood is generally stable.
           </p>
           <div className="w-full max-w-sm aspect-square relative">
             <svg viewBox={`0 0 ${scatterSize} ${scatterSize}`} className="w-full h-full overflow-visible">

@@ -63,7 +63,7 @@ export function StreakCalendar() {
     // Streak Calculation
     let current = 0;
     let longest = 0;
-    let tempStreak = 0;
+    const tempStreak = 0;
     
     // Sort unique dates descending
     const uniqueDates = Array.from(dateCounts.keys()).sort((a, b) => b.localeCompare(a));
@@ -88,7 +88,7 @@ export function StreakCalendar() {
 
       // Calculate current streak
       if (current !== 0 || dateCounts.has(todayIso) || dateCounts.has(yesterdayIso)) {
-        let checkingDate = new Date(expectedDate);
+        const checkingDate = new Date(expectedDate);
         while (true) {
           const iso = toLocalISODate(checkingDate);
           if (dateCounts.has(iso)) {
@@ -155,7 +155,7 @@ export function StreakCalendar() {
     startDate.setDate(startDate.getDate() - dayOffset);
 
     const weeks = [];
-    let currDate = new Date(startDate);
+    const currDate = new Date(startDate);
     
     // We render up to today + the rest of the current week
     while (currDate <= today || currDate.getDay() !== 0) {
