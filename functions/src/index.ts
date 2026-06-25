@@ -10,3 +10,5 @@ export { yggiChat } from './yggi/chat';
 export { generateWeeklyReport } from './reports/weeklyReport';
 export { backfillEmbeddings } from './admin/backfillEmbeddings';
 export { onUserCreate } from './auth/onUserCreate';
+export { createCheckout } from './stripe/createCheckout';
+export { createBillingPortalSession } from './stripe/createBillingPortalSession';
