@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import type { Analytics } from 'firebase/analytics';
@@ -22,6 +23,7 @@ if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
+const functions = getFunctions(app, 'us-central1');
 const storage = getStorage(app);
 
 let analytics: Analytics | null = null;
@@ -35,4 +37,4 @@ const analyticsReady = typeof window !== 'undefined'
     })
   : Promise.resolve(null);
 
-export { app, auth, db, storage, analytics, analyticsReady };
+export { app, auth, db, functions, storage, analytics, analyticsReady };
