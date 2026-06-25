@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { SubscriptionProvider } from '@/context/SubscriptionContext';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function DashboardLayout({
@@ -102,125 +103,127 @@ export default function DashboardLayout({
   ];
 
   return (
-    <div className="h-screen flex bg-background text-foreground font-sans overflow-hidden">
-      {/* Desktop Left Sidebar Navigation */}
-      <aside className="hidden md:flex flex-col w-[220px] bg-surface border-r border-border h-full shrink-0">
-        {/* Wordmark and logo */}
-        <div className="h-16 px-6 flex items-center gap-2.5 border-b border-border/40">
-          <svg className="w-5.5 h-5.5 text-gold" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v18M12 9c2.5 0 5 1.5 5 4s-2.5 4-5 4M12 9C9.5 9 7 10.5 7 13s2.5 4 5 4M12 5c4 0 6 2 6 5s-2 5-6 5M12 5c-4 0-6 2-6 5s2 5 6 5" />
-          </svg>
-          <span className="font-display font-medium text-lg tracking-wider text-foreground select-none">
-            YGGDRASIL
-          </span>
-        </div>
-
-        {/* Navigation list */}
-        <nav className="flex-1 py-4 flex flex-col justify-between">
-          <ul className="space-y-1 px-3">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-              return (
-                <li key={item.name}>
-                  <Link
-                    href={item.href}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium transition-all duration-300 ${
-                      isActive
-                        ? 'bg-muted/30 border-l-[3px] border-gold text-foreground pl-[9px]'
-                        : 'text-foreground/60 hover:bg-surface-2 hover:text-foreground border-l-[3px] border-transparent'
-                    }`}
-                  >
-                    <span className={isActive ? 'text-gold' : 'text-foreground/40'}>
-                      {item.icon}
-                    </span>
-                    {item.name}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-
-          {/* User profile footer info */}
-          <div className="px-4 py-3 border-t border-border/40 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-sm bg-muted flex items-center justify-center text-xs font-mono font-medium text-sage uppercase border border-border">
-              {user.email ? user.email.slice(0, 2).toUpperCase() : 'US'}
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-xs font-medium truncate text-foreground/80">
-                {user.email || 'User'}
-              </span>
-              <span className="text-[10px] text-sage tracking-wider uppercase font-medium">
-                Explorer
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              disabled={signingOut}
-              aria-label="Sign out"
-              className="ml-auto rounded-sm border border-border px-2 py-1 text-xs font-medium text-foreground/70 transition-colors hover:bg-surface-2 hover:text-foreground disabled:opacity-50"
-            >
-              Sign out
-            </button>
-          </div>
-        </nav>
-      </aside>
-
-      {/* Main Layout Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-full">
-        {/* Mobile Header Bar */}
-        <header className="md:hidden h-14 bg-surface border-b border-border px-4 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+    <SubscriptionProvider>
+      <div className="h-screen flex bg-background text-foreground font-sans overflow-hidden">
+        {/* Desktop Left Sidebar Navigation */}
+        <aside className="hidden md:flex flex-col w-[220px] bg-surface border-r border-border h-full shrink-0">
+          {/* Wordmark and logo */}
+          <div className="h-16 px-6 flex items-center gap-2.5 border-b border-border/40">
+            <svg className="w-5.5 h-5.5 text-gold" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v18M12 9c2.5 0 5 1.5 5 4s-2.5 4-5 4M12 9C9.5 9 7 10.5 7 13s2.5 4 5 4M12 5c4 0 6 2 6 5s-2 5-6 5M12 5c-4 0-6 2-6 5s2 5 6 5" />
             </svg>
-            <span className="font-display font-medium text-base tracking-wider text-foreground">
+            <span className="font-display font-medium text-lg tracking-wider text-foreground select-none">
               YGGDRASIL
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-sm bg-muted flex items-center justify-center text-xs font-mono text-sage border border-border">
-              {user.email ? user.email.slice(0, 2).toUpperCase() : 'US'}
-            </div>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              disabled={signingOut}
-              aria-label="Sign out"
-              className="rounded-sm border border-border px-2 py-1 text-xs font-medium text-foreground/70 transition-colors hover:bg-surface-2 hover:text-foreground disabled:opacity-50"
-            >
-              Sign out
-            </button>
-          </div>
-        </header>
+          {/* Navigation list */}
+          <nav className="flex-1 py-4 flex flex-col justify-between">
+            <ul className="space-y-1 px-3">
+              {navItems.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                return (
+                  <li key={item.name}>
+                    <Link
+                      href={item.href}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium transition-all duration-300 ${
+                        isActive
+                          ? 'bg-muted/30 border-l-[3px] border-gold text-foreground pl-[9px]'
+                          : 'text-foreground/60 hover:bg-surface-2 hover:text-foreground border-l-[3px] border-transparent'
+                      }`}
+                    >
+                      <span className={isActive ? 'text-gold' : 'text-foreground/40'}>
+                        {item.icon}
+                      </span>
+                      {item.name}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto pb-20 md:pb-6 relative bg-background">
-          {children}
-        </main>
-
-        {/* Mobile Bottom Navigation Bar */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface border-t border-border flex items-center justify-around z-40 px-2 shadow-lg">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="flex flex-col items-center justify-center w-12 h-12 relative group"
-              >
-                <span className={`transition-colors duration-300 ${isActive ? 'text-gold' : 'text-foreground/40 group-hover:text-foreground/75'}`}>
-                  {item.icon}
+            {/* User profile footer info */}
+            <div className="px-4 py-3 border-t border-border/40 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-sm bg-muted flex items-center justify-center text-xs font-mono font-medium text-sage uppercase border border-border">
+                {user.email ? user.email.slice(0, 2).toUpperCase() : 'US'}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-medium truncate text-foreground/80">
+                  {user.email || 'User'}
                 </span>
-                {isActive && (
-                  <span className="absolute bottom-1 w-1 h-1 rounded-full bg-gold animate-pulse" />
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+                <span className="text-[10px] text-sage tracking-wider uppercase font-medium">
+                  Explorer
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={signingOut}
+                aria-label="Sign out"
+                className="ml-auto rounded-sm border border-border px-2 py-1 text-xs font-medium text-foreground/70 transition-colors hover:bg-surface-2 hover:text-foreground disabled:opacity-50"
+              >
+                Sign out
+              </button>
+            </div>
+          </nav>
+        </aside>
+
+        {/* Main Layout Area */}
+        <div className="flex-1 flex flex-col min-w-0 h-full">
+          {/* Mobile Header Bar */}
+          <header className="md:hidden h-14 bg-surface border-b border-border px-4 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v18M12 9c2.5 0 5 1.5 5 4s-2.5 4-5 4M12 9C9.5 9 7 10.5 7 13s2.5 4 5 4M12 5c4 0 6 2 6 5s-2 5-6 5M12 5c-4 0-6 2-6 5s2 5 6 5" />
+              </svg>
+              <span className="font-display font-medium text-base tracking-wider text-foreground">
+                YGGDRASIL
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-sm bg-muted flex items-center justify-center text-xs font-mono text-sage border border-border">
+                {user.email ? user.email.slice(0, 2).toUpperCase() : 'US'}
+              </div>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={signingOut}
+                aria-label="Sign out"
+                className="rounded-sm border border-border px-2 py-1 text-xs font-medium text-foreground/70 transition-colors hover:bg-surface-2 hover:text-foreground disabled:opacity-50"
+              >
+                Sign out
+              </button>
+            </div>
+          </header>
+
+          {/* Content Area */}
+          <main className="flex-1 overflow-y-auto pb-20 md:pb-6 relative bg-background">
+            {children}
+          </main>
+
+          {/* Mobile Bottom Navigation Bar */}
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface border-t border-border flex items-center justify-around z-40 px-2 shadow-lg">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className="flex flex-col items-center justify-center w-12 h-12 relative group"
+                >
+                  <span className={`transition-colors duration-300 ${isActive ? 'text-gold' : 'text-foreground/40 group-hover:text-foreground/75'}`}>
+                    {item.icon}
+                  </span>
+                  {isActive && (
+                    <span className="absolute bottom-1 w-1 h-1 rounded-full bg-gold animate-pulse" />
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
       </div>
-    </div>
+    </SubscriptionProvider>
   );
 }

@@ -1,6 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscription } from '@/hooks/useSubscription';
 import { useRouter } from 'next/navigation';
 import { useState, useCallback } from 'react';
 import { useFirestoreDoc } from '@/hooks/useFirestore';
@@ -8,6 +10,7 @@ import { setDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { SettingsTracker } from './_tracker';
 import { toast } from 'sonner';
+import { FeatureGate } from '@/components/billing/FeatureGate';
 
 const ALL_FRAMEWORKS = [
   { id: 'Theravada Buddhist', description: 'Emphasizes mindfulness, impermanence, and detachment to reduce suffering.' },
@@ -26,6 +29,7 @@ const ALL_FRAMEWORKS = [
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
+  const subscription = useSubscription();
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
 
@@ -35,9 +39,9 @@ export default function SettingsPage() {
 
   const toggleFramework = useCallback(async (frameworkId: string) => {
     if (!user) return;
-    
+
     const isEnabled = enabledFrameworks.includes(frameworkId);
-    const newFrameworks = isEnabled 
+    const newFrameworks = isEnabled
       ? enabledFrameworks.filter(f => f !== frameworkId)
       : [...enabledFrameworks, frameworkId];
 
@@ -75,53 +79,63 @@ export default function SettingsPage() {
           Optionally enable specific psychological or philosophical lenses for your insights. By default, Yggdrasil uses a warm, non-clinical reflective tone. Enabling frameworks will explicitly adopt their specific terminology and focus.
         </p>
 
-        {loading ? (
-          <div className="animate-pulse space-y-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-12 bg-surface-2 rounded-lg"></div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {ALL_FRAMEWORKS.map(framework => {
-              const checked = enabledFrameworks.includes(framework.id);
-              return (
-                <label 
-                  key={framework.id} 
-                  className={`flex items-start p-4 rounded-xl border cursor-pointer transition-colors ${
-                    checked 
-                      ? 'bg-gold/10 border-gold/30' 
-                      : 'bg-surface-2 border-border/40 hover:bg-surface-2/80'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={checked}
-                    onChange={() => toggleFramework(framework.id)}
-                  />
-                  <div className={`w-5 h-5 rounded border mt-0.5 mr-3 flex-shrink-0 flex items-center justify-center ${
-                    checked ? 'bg-gold border-gold' : 'border-muted-foreground/50'
-                  }`}>
-                    {checked && (
-                      <svg className="w-3.5 h-3.5 text-background" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className={`font-medium ${checked ? 'text-gold' : 'text-foreground/80'}`}>
-                      {framework.id}
-                    </span>
-                    <span className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                      {framework.description}
-                    </span>
-                  </div>
-                </label>
-              );
-            })}
-          </div>
-        )}
+        <FeatureGate loading={subscription.loading} blocked={subscription.entitlement !== 'PRO'} requiredTier="PRO" overlay label="Analytical frameworks are available with Pro.">
+          {loading ? (
+            <div className="animate-pulse space-y-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-12 bg-surface-2 rounded-lg"></div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {ALL_FRAMEWORKS.map(framework => {
+                const checked = enabledFrameworks.includes(framework.id);
+                return (
+                  <label 
+                    key={framework.id} 
+                    className={`flex items-start p-4 rounded-xl border cursor-pointer transition-colors ${
+                      checked 
+                        ? 'bg-gold/10 border-gold/30' 
+                        : 'bg-surface-2 border-border/40 hover:bg-surface-2/80'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={checked}
+                      onChange={() => toggleFramework(framework.id)}
+                    />
+                    <div className={`w-5 h-5 rounded border mt-0.5 mr-3 flex-shrink-0 flex items-center justify-center ${
+                      checked ? 'bg-gold border-gold' : 'border-muted-foreground/50'
+                    }`}>
+                      {checked && (
+                        <svg className="w-3.5 h-3.5 text-background" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className={`font-medium ${checked ? 'text-gold' : 'text-foreground/80'}`}>
+                        {framework.id}
+                      </span>
+                      <span className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        {framework.description}
+                      </span>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </FeatureGate>
+      </section>
+
+      <section className="rounded-xl border border-border/60 bg-surface p-5">
+        <h2 className="font-display text-xl text-foreground">Billing</h2>
+        <p className="mt-2 text-sm text-foreground/70">Manage access to premium reflections, exports, and insight tools.</p>
+        <Link href="/pricing" className="mt-4 inline-flex rounded-sm border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold/20">
+          {subscription.billingPeriod ? 'Manage plan' : 'View plans'}
+        </Link>
       </section>
 
       <section className="pt-8 border-t border-border/40">

@@ -1,11 +1,17 @@
+'use client';
+
 import { InsightsTracker } from './_tracker';
 import { StreakCalendar } from '@/components/insights/StreakCalendar';
 import { MoodCharts } from '@/components/insights/MoodCharts';
 import { EmotionalPatterns } from '@/components/insights/EmotionalPatterns';
 import { ClusterMap } from '@/components/insights/ClusterMap';
 import { KnowledgeGraph } from '@/components/insights/KnowledgeGraph';
+import { FeatureGate } from '@/components/billing/FeatureGate';
+import { useSubscription } from '@/hooks/useSubscription';
 
 export default function InsightsPage() {
+  const subscription = useSubscription();
+
   return (
     <div className="max-w-5xl mx-auto py-12 px-4 sm:px-6">
       <InsightsTracker />
@@ -29,13 +35,15 @@ export default function InsightsPage() {
         <EmotionalPatterns />
       </div>
 
-      <div className="mb-12">
-        <KnowledgeGraph />
-      </div>
+      <FeatureGate loading={subscription.loading} blocked={subscription.entitlement !== 'PRO'} requiredTier="PRO" overlay label="The full knowledge graph and hidden connections are available with Pro.">
+        <div className="mb-12">
+          <KnowledgeGraph />
+        </div>
 
-      <div className="mb-12">
-        <ClusterMap />
-      </div>
+        <div className="mb-12">
+          <ClusterMap />
+        </div>
+      </FeatureGate>
 
     </div>
   );
