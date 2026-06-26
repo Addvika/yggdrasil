@@ -34,17 +34,13 @@ export async function GET(request: Request) {
 
     const graphData = buildKnowledgeGraph(entries, tier, backendClusters);
 
-    // Deep clean the object to remove any non-serializable properties (like Timestamps or nested class instances) that might have snuck in
-    const cleanData = JSON.parse(JSON.stringify(graphData, (key, value) => {
-      if (value && typeof value === 'object' && value.constructor && value.constructor.name === 'Timestamp') {
-        return value.toMillis ? value.toMillis() : value;
-      }
-      return value;
-    }));
-
-    return NextResponse.json(cleanData);
+    // graphData is created from scratch as POJOs, no need for Timestamp checking which can throw
+    return NextResponse.json(graphData);
   } catch (error: any) {
     console.error('Knowledge Graph API Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Internal Server Error', 
+      details: error.stack || error.toString() 
+    }, { status: 500 });
   }
 }

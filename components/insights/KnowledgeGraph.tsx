@@ -65,6 +65,12 @@ export function KnowledgeGraph() {
           }
         });
         if (!res.ok) {
+          let errDetails = '';
+          try {
+            const errData = await res.json();
+            errDetails = errData.details || errData.error || '';
+          } catch (e) {}
+          console.error('Backend Knowledge Graph Error:', errDetails);
           throw new Error('Failed to load knowledge graph');
         }
         const graphData: GraphData = await res.json();
