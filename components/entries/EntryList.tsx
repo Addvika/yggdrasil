@@ -77,7 +77,8 @@ export function EntryList() {
       setSearchQuery(''); // Clear search on mount/user change
       fetchEntries(true);
     }
-  }, [user, fetchEntries]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Helper method added to handle firing the entry_search tracking event
   const fireEntrySearch = useCallback((queryStr: string) => {

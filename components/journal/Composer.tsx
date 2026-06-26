@@ -1,28 +1,61 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { EntryTypeSelector, type EntryType } from "./EntryTypeSelector";
 import { MoodSliders, type MoodState } from "./MoodSliders";
-import { createEntry } from "@/lib/entries";
+import { VoiceRecorder } from "./VoiceRecorder";
+import { createEntry, updateEntry } from "@/lib/entries";
 import { auth } from "@/lib/firebase/client";
 import { logEntryCreated } from "@/lib/analytics/client";
 import { ThinkingIndicator } from "./ThinkingIndicator";
+import { toast } from "sonner";
+import type { JournalEntry } from "@/types/journal";
 
-export function Composer() {
+export interface ComposerProps {
+  initialEntry?: JournalEntry;
+  onSave?: (entryId: string) => void;
+}
+
+export function Composer({ initialEntry, onSave }: ComposerProps = {}) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const [content, setContent] = useState("");
-  const [entryType, setEntryType] = useState<EntryType>(null);
-  const [mood, setMood] = useState<MoodState | null>(null);
+  const [content, setContent] = useState(initialEntry?.content || "");
+  const [entryType, setEntryType] = useState<EntryType>(
+    initialEntry?.entryType 
+      ? (initialEntry.entryType.charAt(0).toUpperCase() + initialEntry.entryType.slice(1).toLowerCase() as EntryType)
+      : null
+  );
+  const [mood, setMood] = useState<MoodState | null>(
+    initialEntry?.moodLabel 
+      ? { label: initialEntry.moodLabel, polarity: initialEntry.moodPolarity || 5, intensity: initialEntry.moodIntensity || 5 }
+      : null
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [pendingEntryId, setPendingEntryId] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [voiceNoteStoragePath, setVoiceNoteStoragePath] = useState<string | null>(null);
 
   useEffect(() => {
-    // Focus on mount so user can start typing immediately
-    if (editorRef.current) {
+    // Re-initialize the contentEditable when returning from recording or on first mount
+    if (!isRecording && editorRef.current) {
+      editorRef.current.innerHTML = content;
       editorRef.current.focus();
+      
+      // Move cursor to the end of the text
+      try {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      } catch (e) {
+        // Ignore selection errors
+      }
     }
-  }, []);
+    // We intentionally only run this when transitioning between recording states
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRecording]);
 
   const handleCommand = (command: string) => {
     document.execCommand(command, false, undefined);
@@ -37,6 +70,31 @@ export function Composer() {
     }
   };
 
+  const handleTranscriptReady = useCallback((transcript: string, storagePath: string) => {
+    // Convert plain text transcript into HTML paragraphs for the contentEditable
+    const htmlContent = transcript
+      .split(/\n\n+/)
+      .filter(Boolean)
+      .map((p) => `<p>${p.trim()}</p>`)
+      .join("");
+
+    // Append to existing content using state callback
+    setContent((prev) => {
+      if (prev.trim()) {
+        return prev + "<br>" + htmlContent;
+      }
+      return htmlContent;
+    });
+
+    setVoiceNoteStoragePath(storagePath);
+    setIsRecording(false);
+    toast.success("Voice note transcribed!");
+  }, []);
+
+  const handleRecordingCancel = useCallback(() => {
+    setIsRecording(false);
+  }, []);
+
   const handleSave = async () => {
     if (!content.trim() || !auth.currentUser) return;
     
@@ -44,38 +102,57 @@ export function Composer() {
     setSaveStatus('saving');
 
     try {
-      const entryId = await createEntry({
-        userId: auth.currentUser.uid,
-        content,
-        entryType,
-        mood
-      });
+      let entryId: string;
       
-      // Calculate basic word count for analytics
-      // Strip HTML tags for word count
-      const textContent = content.replace(/<[^>]*>?/gm, ' ');
-      const wordCount = textContent.trim().split(/\s+/).filter(Boolean).length;
-      
-      logEntryCreated({
-        entry_type: entryType ?? undefined,
-        has_mood: !!mood,
-        tag_count: 0,
-        word_count: wordCount
-      });
-
-      // Clear composer
-      setContent("");
-      if (editorRef.current) {
-        editorRef.current.innerHTML = "";
+      if (initialEntry) {
+        await updateEntry(auth.currentUser.uid, initialEntry.id, {
+          content,
+          entryType,
+          mood
+        });
+        entryId = initialEntry.id;
+        toast.success("Entry updated successfully");
+      } else {
+        entryId = await createEntry({
+          userId: auth.currentUser.uid,
+          content,
+          entryType,
+          mood
+        });
+        toast.success("Entry saved successfully");
+        
+        // Calculate basic word count for analytics
+        const textContent = content.replace(/<[^>]*>?/gm, ' ');
+        const wordCount = textContent.trim().split(/\s+/).filter(Boolean).length;
+        
+        logEntryCreated({
+          entry_type: entryType ?? undefined,
+          has_mood: !!mood,
+          tag_count: 0,
+          word_count: wordCount
+        });
       }
-      setEntryType(null);
-      setMood(null);
+
+      // Clear composer if creating new
+      if (!initialEntry) {
+        setContent("");
+        if (editorRef.current) {
+          editorRef.current.innerHTML = "";
+        }
+        setEntryType(null);
+        setMood(null);
+      }
       
       setSaveStatus('idle');
       setPendingEntryId(entryId);
+      
+      if (onSave) {
+        onSave(entryId);
+      }
     } catch (error) {
       console.error('Failed to save entry:', error);
       setSaveStatus('error');
+      toast.error('Failed to save entry');
     } finally {
       setIsSaving(false);
     }
@@ -106,17 +183,53 @@ export function Composer() {
         >
           <span className="text-lg leading-none text-sage">•</span> List
         </button>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Mic button */}
+        <button
+          onClick={() => setIsRecording(true)}
+          disabled={isRecording}
+          className="px-3 py-1.5 rounded-sm hover:bg-sage/15 text-sm transition-colors text-sage hover:text-sage flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          title="Record a voice note"
+        >
+          <svg
+            className="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="9" y="1" width="6" height="12" rx="3" />
+            <path d="M5 10a7 7 0 0 0 14 0" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+          </svg>
+          Voice
+        </button>
       </div>
 
-      {/* Editor Area */}
-      <div
-        ref={editorRef}
-        className="flex-1 p-8 outline-none overflow-y-auto text-body-lg leading-relaxed text-foreground bg-transparent
-                   empty:before:content-[attr(data-placeholder)] empty:before:text-foreground/30 empty:before:pointer-events-none empty:before:block"
-        contentEditable
-        onInput={handleInput}
-        data-placeholder="Write your entry here..."
-      />
+      {/* Editor Area or Voice Recorder */}
+      {isRecording ? (
+        <div className="flex-1 flex items-center justify-center">
+          <VoiceRecorder
+            onTranscriptReady={handleTranscriptReady}
+            onCancel={handleRecordingCancel}
+          />
+        </div>
+      ) : (
+        <div
+          ref={editorRef}
+          className="flex-1 p-8 outline-none overflow-y-auto text-body-lg leading-relaxed text-foreground bg-transparent
+                     empty:before:content-[attr(data-placeholder)] empty:before:text-foreground/30 empty:before:pointer-events-none empty:before:block"
+          contentEditable
+          onInput={handleInput}
+          data-placeholder="Write your entry here..."
+        />
+      )}
 
       {/* Post-Composer Options */}
       <div className="px-8 pb-8 flex flex-col gap-6">
