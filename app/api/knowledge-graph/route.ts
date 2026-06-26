@@ -19,27 +19,31 @@ export async function GET(request: Request) {
 
     const entriesSnapshot = await adminDb.collection('users').doc(userId).collection('entries').get();
     
-    const entries = await Promise.all(entriesSnapshot.docs.map(async doc => {
+    const entries = entriesSnapshot.docs.map(doc => {
       const data = doc.data();
-      
-      // Fetch analysis from subcollection
-      const analysisSnap = await adminDb.collection('users').doc(userId)
-        .collection('entries').doc(doc.id)
-        .collection('analysis').limit(1).get();
-        
-      const analysis = analysisSnap.empty ? undefined : analysisSnap.docs[0].data();
-
       return {
         ...data,
         id: doc.id,
-        analysis
+        analysis: data.analysis
       } as (JournalEntry & { analysis?: EntryAnalysis });
+    });
+
+    // Fetch pre-computed backend clusters
+    const clustersSnap = await adminDb.collection('users').doc(userId).collection('graphMetadata').doc('clusters').get();
+    const backendClusters = clustersSnap.exists ? clustersSnap.data()?.clusters || [] : [];
+
+    const graphData = buildKnowledgeGraph(entries, tier, backendClusters);
+
+    // Deep clean the object to remove any non-serializable properties (like Timestamps or nested class instances) that might have snuck in
+    const cleanData = JSON.parse(JSON.stringify(graphData, (key, value) => {
+      if (value && typeof value === 'object' && value.constructor && value.constructor.name === 'Timestamp') {
+        return value.toMillis ? value.toMillis() : value;
+      }
+      return value;
     }));
 
-    const graphData = buildKnowledgeGraph(entries, tier);
-
-    return NextResponse.json(graphData);
-  } catch (error) {
+    return NextResponse.json(cleanData);
+  } catch (error: any) {
     console.error('Knowledge Graph API Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

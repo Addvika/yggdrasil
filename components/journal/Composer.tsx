@@ -18,6 +18,7 @@ export interface ComposerProps {
 
 export function Composer({ initialEntry, onSave }: ComposerProps = {}) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const [title, setTitle] = useState(initialEntry?.title || "");
   const [content, setContent] = useState(initialEntry?.content || "");
   const [entryType, setEntryType] = useState<EntryType>(
     initialEntry?.entryType 
@@ -34,6 +35,17 @@ export function Composer({ initialEntry, onSave }: ComposerProps = {}) {
   const [pendingEntryId, setPendingEntryId] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [voiceNoteStoragePath, setVoiceNoteStoragePath] = useState<string | null>(null);
+
+  const getLocalDatetimeString = (date: Date) => {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+
+  const [entryDateStr, setEntryDateStr] = useState(
+    initialEntry?.entryDate 
+      ? getLocalDatetimeString(new Date(initialEntry.entryDate))
+      : getLocalDatetimeString(new Date())
+  );
 
   useEffect(() => {
     // Re-initialize the contentEditable when returning from recording or on first mount
@@ -106,18 +118,22 @@ export function Composer({ initialEntry, onSave }: ComposerProps = {}) {
       
       if (initialEntry) {
         await updateEntry(auth.currentUser.uid, initialEntry.id, {
+          title: title.trim() || undefined,
           content,
           entryType,
-          mood
+          mood,
+          entryDate: new Date(entryDateStr).getTime()
         });
         entryId = initialEntry.id;
         toast.success("Entry updated successfully");
       } else {
         entryId = await createEntry({
           userId: auth.currentUser.uid,
+          title: title.trim() || undefined,
           content,
           entryType,
-          mood
+          mood,
+          entryDate: new Date(entryDateStr).getTime()
         });
         toast.success("Entry saved successfully");
         
@@ -135,12 +151,14 @@ export function Composer({ initialEntry, onSave }: ComposerProps = {}) {
 
       // Clear composer if creating new
       if (!initialEntry) {
+        setTitle("");
         setContent("");
         if (editorRef.current) {
           editorRef.current.innerHTML = "";
         }
         setEntryType(null);
         setMood(null);
+        setEntryDateStr(getLocalDatetimeString(new Date()));
       }
       
       setSaveStatus('idle');
@@ -221,14 +239,32 @@ export function Composer({ initialEntry, onSave }: ComposerProps = {}) {
           />
         </div>
       ) : (
-        <div
-          ref={editorRef}
-          className="flex-1 p-8 outline-none overflow-y-auto text-body-lg leading-relaxed text-foreground bg-transparent
-                     empty:before:content-[attr(data-placeholder)] empty:before:text-foreground/30 empty:before:pointer-events-none empty:before:block"
-          contentEditable
-          onInput={handleInput}
-          data-placeholder="Write your entry here..."
-        />
+        <div className="flex-1 flex flex-col">
+          <div className="px-8 pt-8 pb-1 flex items-center">
+            <input
+              type="datetime-local"
+              value={entryDateStr}
+              onChange={(e) => setEntryDateStr(e.target.value)}
+              className="bg-transparent text-sm text-muted-foreground/80 outline-none hover:text-muted-foreground transition-colors cursor-pointer"
+              title="Date of the entry"
+            />
+          </div>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Untitled Entry"
+            className="w-full bg-transparent px-8 pt-1 pb-4 text-2xl sm:text-3xl font-display text-foreground placeholder:text-muted-foreground/40 outline-none"
+          />
+          <div
+            ref={editorRef}
+            className="flex-1 px-8 pb-8 outline-none overflow-y-auto text-body-lg leading-relaxed text-foreground bg-transparent
+                       empty:before:content-[attr(data-placeholder)] empty:before:text-foreground/30 empty:before:pointer-events-none empty:before:block"
+            contentEditable
+            onInput={handleInput}
+            data-placeholder="Write your entry here..."
+          />
+        </div>
       )}
 
       {/* Post-Composer Options */}
