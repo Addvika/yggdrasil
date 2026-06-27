@@ -11,6 +11,8 @@ import { JournalEntry, EntryAnalysis } from '@/types/journal';
 
 type DateRange = 14 | 30 | 90;
 
+const MARGIN = { top: 20, right: 120, bottom: 30, left: 40 };
+
 export function EmotionalPatterns() {
   const { user } = useAuth();
   const { data: entries, loading: entriesLoading } = useFirestore<JournalEntry>(
@@ -19,58 +21,17 @@ export function EmotionalPatterns() {
   );
 
   const [dateRange, setDateRange] = useState<DateRange>(30);
-  const [analyses, setAnalyses] = useState<Record<string, EntryAnalysis>>({});
-  const [fetchingAnalysis, setFetchingAnalysis] = useState(false);
 
   // 1. Filter entries based on the date range
   const filteredEntries = useMemo(() => {
     if (!entries) return [];
     const now = Date.now();
     const rangeMs = dateRange * 24 * 60 * 60 * 1000;
-    return entries.filter(e => now - e.createdAt <= rangeMs && e.analysisStatus === 'complete');
+    return entries.filter(e => {
+      const timeMs = new Date(e.entryDate || e.createdAt).getTime();
+      return now - timeMs <= rangeMs && e.analysisStatus === 'complete' && e.analysis;
+    });
   }, [entries, dateRange]);
-
-  // 2. Fetch missing analyses for the filtered entries
-  useEffect(() => {
-    if (!user || filteredEntries.length === 0) return;
-
-    const fetchMissing = async () => {
-      setFetchingAnalysis(true);
-      try {
-        const missing = filteredEntries.filter(e => !analyses[e.id]);
-        if (missing.length === 0) {
-          setFetchingAnalysis(false);
-          return;
-        }
-
-        const promises = missing.map(async (entry) => {
-          const q = query(collection(db, `users/${user.uid}/entries/${entry.id}/analysis`), limit(1));
-          const snapshot = await getDocs(q);
-          if (!snapshot.empty) {
-            return { entryId: entry.id, analysis: snapshot.docs[0].data() as EntryAnalysis };
-          }
-          return null;
-        });
-
-        const results = await Promise.all(promises);
-        
-        setAnalyses(prev => {
-          const next = { ...prev };
-          results.forEach(res => {
-            if (res) next[res.entryId] = res.analysis;
-          });
-          return next;
-        });
-      } catch (err) {
-        console.error('Failed to fetch analyses:', err);
-      } finally {
-        setFetchingAnalysis(false);
-      }
-    };
-
-    fetchMissing();
-  }, [filteredEntries, user, analyses]); // analyses dependency triggers infinite loop? No, only missing ones are filtered. But to be safe, we should exclude analyses from dep if possible or use a ref.
-  // Actually, filtering `missing` inside the effect means it stops when `missing.length === 0`.
 
   // 3. Aggregate data for the charts
   const { emotionSeries, topThemes } = useMemo(() => {
@@ -83,10 +44,11 @@ export function EmotionalPatterns() {
     const chronological = [...filteredEntries].sort((a, b) => a.createdAt - b.createdAt);
 
     chronological.forEach(entry => {
-      const date = new Date(entry.createdAt);
+      const date = new Date(entry.entryDate || entry.createdAt);
       const iso = date.toISOString().split('T')[0];
-      const analysis = analyses[entry.id];
+      const analysis = entry.analysis;
       
+      if (!analysis) return;
       if (!dayMap.has(iso)) {
         dayMap.set(iso, { date: new Date(iso), emotions: {}, themes: [] });
       }
@@ -146,12 +108,11 @@ export function EmotionalPatterns() {
       .map(([theme, count]) => ({ theme, count }));
 
     return { emotionSeries: series, topThemes: topT };
-  }, [filteredEntries, analyses]);
+  }, [filteredEntries]);
 
   // --- D3 Line Chart Configuration ---
   const width = 600;
   const height = 250;
-  const margin = { top: 20, right: 120, bottom: 30, left: 40 };
 
   const xLine = useMemo(() => {
     const allDates = emotionSeries.flatMap(s => s.data.map(d => d.date));
@@ -165,14 +126,14 @@ export function EmotionalPatterns() {
 
     return d3.scaleTime()
       .domain(domain)
-      .range([margin.left, width - margin.right]);
-  }, [emotionSeries, dateRange, margin]);
+      .range([MARGIN.left, width - MARGIN.right]);
+  }, [emotionSeries, dateRange]);
 
   const yLine = useMemo(() => {
     return d3.scaleLinear()
       .domain([0, 10]) // Intensity is 0-10
-      .range([height - margin.bottom, margin.top]);
-  }, [height, margin]);
+      .range([height - MARGIN.bottom, MARGIN.top]);
+  }, [height]);
 
   const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
@@ -192,7 +153,7 @@ export function EmotionalPatterns() {
       <div className="flex justify-between items-center">
         <h3 className="text-xl font-display text-foreground">Longitudinal Patterns</h3>
         <div className="flex items-center gap-4">
-          {fetchingAnalysis && <span className="text-xs text-muted-foreground animate-pulse">Analyzing timeframe...</span>}
+
           <select
             value={dateRange}
             onChange={(e) => setDateRange(Number(e.target.value) as DateRange)}
@@ -217,12 +178,12 @@ export function EmotionalPatterns() {
             {emotionSeries.length > 0 ? (
               <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
                 {/* Axes */}
-                <line x1={margin.left} y1={height - margin.bottom} x2={width - margin.right} y2={height - margin.bottom} stroke="currentColor" className="text-border" strokeWidth={2} />
-                <line x1={margin.left} y1={margin.top} x2={margin.left} y2={height - margin.bottom} stroke="currentColor" className="text-border" strokeWidth={2} />
+                <line x1={MARGIN.left} y1={height - MARGIN.bottom} x2={width - MARGIN.right} y2={height - MARGIN.bottom} stroke="currentColor" className="text-border" strokeWidth={2} />
+                <line x1={MARGIN.left} y1={MARGIN.top} x2={MARGIN.left} y2={height - MARGIN.bottom} stroke="currentColor" className="text-border" strokeWidth={2} />
                 
                 {/* Y-axis Labels */}
-                <text x={margin.left - 10} y={margin.top} textAnchor="end" className="fill-muted-foreground text-[10px] alignment-baseline-middle">High</text>
-                <text x={margin.left - 10} y={height - margin.bottom} textAnchor="end" className="fill-muted-foreground text-[10px] alignment-baseline-middle">Low</text>
+                <text x={MARGIN.left - 10} y={MARGIN.top} textAnchor="end" className="fill-muted-foreground text-[10px] alignment-baseline-middle">High</text>
+                <text x={MARGIN.left - 10} y={height - MARGIN.bottom} textAnchor="end" className="fill-muted-foreground text-[10px] alignment-baseline-middle">Low</text>
 
                 {/* Lines */}
                 {emotionSeries.map((series, i) => (
