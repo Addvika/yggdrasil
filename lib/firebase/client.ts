@@ -6,19 +6,33 @@ import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import type { Analytics } from 'firebase/analytics';
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+// Public Firebase *web app* config for yggdrasil-497923. These values are not
+// secrets: they ship verbatim in every client bundle and access is enforced by
+// Firebase security rules, not by hiding the config (see the note in
+// .env.production.example — "safe to commit"). Committed defaults keep
+// clean-checkout builds working: Cloud Build / App Hosting / CI have no
+// .env.production, and Next.js prerenders client components at build time, so
+// a missing apiKey used to crash `next build` with auth/invalid-api-key.
+// NEXT_PUBLIC_ env vars still take precedence when present.
+const publicDefaults = {
+  apiKey: 'AIzaSyBURyw8WUWgdtdXIecSoWB31I9LQLMIRIM',
+  authDomain: 'yggdrasil-497923.firebaseapp.com',
+  projectId: 'yggdrasil-497923',
+  storageBucket: 'yggdrasil-497923.firebasestorage.app',
+  messagingSenderId: '168739896450',
+  appId: '1:168739896450:web:d4df0d16873ceb8b7b489b',
+  measurementId: 'G-GZZD2WH17Y',
 };
 
-if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-  console.error("CRITICAL: NEXT_PUBLIC_FIREBASE_API_KEY is missing! You must provide NEXT_PUBLIC_ variables during the Next.js build (e.g. via .env.production or build args).");
-}
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? publicDefaults.apiKey,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? publicDefaults.authDomain,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? publicDefaults.projectId,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? publicDefaults.storageBucket,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? publicDefaults.messagingSenderId,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? publicDefaults.appId,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID ?? publicDefaults.measurementId,
+};
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
